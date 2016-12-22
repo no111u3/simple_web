@@ -10,13 +10,15 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <unistd.h>
-#include <string.h>
 #include <stdio.h>
 
-#define EPOLL_SIZE 32
+#define EPOLL_SIZE 4
 #define BUF_SIZE (4*1024)
 
 #define EPOLL_RUN_TIMEOUT -1
+
+#include <thread>
+
 namespace {
     const char *title =
         "<head><title>simple web server</title></head>"
@@ -28,8 +30,7 @@ namespace {
     std::string directory = ".";
 }
 int handle_message(int client) {
-    char buf[BUF_SIZE];
-    bzero(buf, BUF_SIZE);
+    char buf[BUF_SIZE] = {0};
     
     int len = recv(client, buf, BUF_SIZE, 0);
     
@@ -84,9 +85,11 @@ int handle_message(int client) {
             out << "Content-Lenght: " << content_len << "\r\n";
             if (content_len) {
                 out << "\r\n";
-                out << content;
             }
             send(client, out.str().c_str(), out.str().size(), 0);
+            if (content_len) {
+                send(client, content.c_str(), content.size(), 0);
+            }
             std::cout << req_type << ": " << req << " ";
             std::cout << resp << " ";
             std::cout << content_len << std::endl;
@@ -108,13 +111,13 @@ int main() {
     
     static struct epoll_event ev, events[EPOLL_SIZE];
     
-    ev.events = EPOLLIN | EPOLLET;
+    ev.events = EPOLLIN;
 
     int listener = socket(PF_INET, SOCK_STREAM, 0);
 
     int bnd = bind(listener, (struct sockaddr *)&addr, sizeof(addr));
 
-    listen(listener, 1);
+    listen(listener, ECONNREFUSED);
     
     int epfd = epoll_create(EPOLL_SIZE);
     
@@ -133,7 +136,12 @@ int main() {
                 
                 epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev);
             } else {
-                int res = handle_message(events[i].data.fd);
+                epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
+                int client = events[i].data.fd;
+                std::thread t([client](){
+                    int res = handle_message(client);
+                });
+                t.detach();
             }
         }
     }
