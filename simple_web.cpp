@@ -1,4 +1,9 @@
+#include <string>
 #include <iostream>
+#include <sstream>
+#include <list>
+#include <fstream>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -7,27 +12,87 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
-#include <list>
 
-#define EPOLL_SIZE 4
-#define MSG_SIZE 255
+#define EPOLL_SIZE 32
+#define BUF_SIZE (4*1024)
 
 #define EPOLL_RUN_TIMEOUT -1
-
-std::list<int> clients;
-
+namespace {
+    const char *title =
+        "<head><title>simple web server</title></head>"
+        "<body><h3><center>simple web server</center></h3></body>";
+    const char *error404 =
+        "<head><title>simple web server</title></head>"
+        "<body><h3><center>404 request page not found!</center></h3></body>";
+    
+    std::string directory = ".";
+}
 int handle_message(int client) {
-    char buf[MSG_SIZE];
-    bzero(buf, MSG_SIZE);
+    char buf[BUF_SIZE];
+    bzero(buf, BUF_SIZE);
     
-    int len = recv(client, buf, MSG_SIZE, 0);
+    int len = recv(client, buf, BUF_SIZE, 0);
     
-    if (len == 0) {
-        close(client);
-        clients.remove(client);
-    } else {
-        send(client, buf, MSG_SIZE, 0);
+    if (len != 0) {
+        std::stringstream in(buf);
+        std::string req_type;
+        in >> req_type;
+        if (req_type == "GET") {
+            std::string req;
+            bool success = false;
+            int content_len = 0;
+            std::string content;
+            in >> req;
+            // cleaning request
+            {
+                std::size_t found = req.find("?");
+                if (found != std::string::npos) {
+                    req = std::string(req.begin(), req.begin()+found);
+                }
+            }
+            if (req == "/") {
+                success = true;
+                content = title;
+                content_len = content.size();
+            } else {
+                std::ifstream ifs;
+                std::stringstream c_stream;
+                std::string path = directory + req;
+                ifs.open(path.c_str(), std::ifstream::in);
+                
+                if (ifs.good()) {
+                    success = true;
+                    char c = ifs.get();
+                    while (ifs.good()) {
+                        c_stream << c;
+                        c = ifs.get();
+                    }
+                    content = c_stream.str();
+                    content_len = content.size();
+                } else {
+                    content = error404;
+                    content_len = content.size();
+                }
+                
+                ifs.close();
+            }
+            std::stringstream out;
+            std::string resp = (success ? "200 Ok" : "404 Not Found");
+            out << "HTTP/1.0 " << resp << "\r\n"; 
+            out << "Server: simple web\r\n"
+                "Content-Type: text/html\r\n";
+            out << "Content-Lenght: " << content_len << "\r\n";
+            if (content_len) {
+                out << "\r\n";
+                out << content;
+            }
+            send(client, out.str().c_str(), out.str().size(), 0);
+            std::cout << req_type << ": " << req << " ";
+            std::cout << resp << " ";
+            std::cout << content_len << std::endl;
+        }
     }
+    close(client);
     
     return len;
 }
@@ -44,18 +109,14 @@ int main() {
     static struct epoll_event ev, events[EPOLL_SIZE];
     
     ev.events = EPOLLIN | EPOLLET;
-    
-    char message[MSG_SIZE + 1];
-    
-    int epfd;
-    
+
     int listener = socket(PF_INET, SOCK_STREAM, 0);
 
     int bnd = bind(listener, (struct sockaddr *)&addr, sizeof(addr));
 
     listen(listener, 1);
     
-    epfd = epoll_create(EPOLL_SIZE);
+    int epfd = epoll_create(EPOLL_SIZE);
     
     ev.data.fd = listener;
     
@@ -71,7 +132,6 @@ int main() {
                 ev.data.fd = client;
                 
                 epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev);
-                clients.push_back(client);
             } else {
                 int res = handle_message(events[i].data.fd);
             }
