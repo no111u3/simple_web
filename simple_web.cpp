@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -90,9 +91,9 @@ int handle_message(int client) {
             if (content_len) {
                 send(client, content.c_str(), content.size(), 0);
             }
-            std::cout << req_type << ": " << req << " ";
+            /*std::cout << req_type << ": " << req << " ";
             std::cout << resp << " ";
-            std::cout << content_len << std::endl;
+            std::cout << content_len << std::endl;*/
         }
     }
     close(client);
@@ -100,7 +101,7 @@ int handle_message(int client) {
     return len;
 }
 
-int main() {
+int main(int argc, char **argv) {
     std::cout << "simple web server" << std::endl;
     struct sockaddr_in addr, their_addr;
     addr.sin_family = PF_INET;
@@ -112,42 +113,73 @@ int main() {
     static struct epoll_event ev, events[EPOLL_SIZE];
     
     ev.events = EPOLLIN;
+    int res;
+    while ((res = getopt(argc, argv, "h:p:d:")) != -1) {
+        switch (res) {
+            case 'h':
+                addr.sin_addr.s_addr = inet_addr(optarg);
+                break;
+            case 'p':
+                addr.sin_port = htons(std::stoi(optarg));
+                break;
+            case 'd':
+                directory = optarg;
+                break;
+        }    
+    }
 
-    int listener = socket(PF_INET, SOCK_STREAM, 0);
-
-    int bnd = bind(listener, (struct sockaddr *)&addr, sizeof(addr));
-
-    listen(listener, ECONNREFUSED);
+    int pid;
+    // daemoning
+    pid = fork();
     
-    int epfd = epoll_create(EPOLL_SIZE);
-    
-    ev.data.fd = listener;
-    
-    epoll_ctl(epfd, EPOLL_CTL_ADD, listener, &ev);
-    
-    while (true) {
-        int epoll_events_count = epoll_wait(epfd, events, EPOLL_SIZE, EPOLL_RUN_TIMEOUT);
+    if (pid == -1)
+    {
+        std::cout << "Error to start daemon" << std::endl;
+    }
+    else if (!pid) {
+        umask(0);
+        setsid();
+        chdir("/");
         
-        for (int i = 0; i < epoll_events_count; i++) {
-            if (events[i].data.fd == listener) {
-                int client = accept(listener, (struct sockaddr *) &their_addr, &socklen);
-                
-                ev.data.fd = client;
-                
-                epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev);
-            } else {
-                epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
-                int client = events[i].data.fd;
-                std::thread t([client](){
-                    int res = handle_message(client);
-                });
-                t.detach();
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+        
+        int listener = socket(PF_INET, SOCK_STREAM, 0);
+
+        int bnd = bind(listener, (struct sockaddr *)&addr, sizeof(addr));
+
+        listen(listener, ECONNREFUSED);
+        
+        int epfd = epoll_create(EPOLL_SIZE);
+        
+        ev.data.fd = listener;
+        
+        epoll_ctl(epfd, EPOLL_CTL_ADD, listener, &ev);
+        
+        while (true) {
+            int epoll_events_count = epoll_wait(epfd, events, EPOLL_SIZE, EPOLL_RUN_TIMEOUT);
+            
+            for (int i = 0; i < epoll_events_count; i++) {
+                if (events[i].data.fd == listener) {
+                    int client = accept(listener, (struct sockaddr *) &their_addr, &socklen);
+                    
+                    ev.data.fd = client;
+                    
+                    epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev);
+                } else {
+                    epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
+                    int client = events[i].data.fd;
+                    std::thread t([client](){
+                        int res = handle_message(client);
+                    });
+                    t.detach();
+                }
             }
         }
+        close(listener);
+        close(epfd);
     }
-    
-    close(listener);
-    close(epfd);
     
     return 0;
 }
