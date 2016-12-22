@@ -21,16 +21,16 @@
 
 #include <thread>
 
-namespace {
-    const char *title =
+//namespace {
+    const char title[] =
         "<head><title>simple web server</title></head>"
         "<body><h3><center>simple web server</center></h3></body>";
-    const char *error404 =
+    const char error404[] =
         "<head><title>simple web server</title></head>"
         "<body><h3><center>404 request page not found!</center></h3></body>";
     
     std::string directory = ".";
-}
+//}
 int handle_message(int client) {
     char buf[BUF_SIZE] = {0};
     
@@ -44,7 +44,6 @@ int handle_message(int client) {
             std::string req;
             bool success = false;
             int content_len = 0;
-            std::string content;
             char *memblock = 0;
             in >> req;
             // cleaning request
@@ -56,8 +55,8 @@ int handle_message(int client) {
             }
             if (req == "/") {
                 success = true;
-                content = title;
-                content_len = content.size();
+                memblock = (char *)title;
+                content_len = sizeof(title) - 1;
             } else {
                 std::ifstream ifs;
                 std::string path = directory + req;
@@ -72,28 +71,31 @@ int handle_message(int client) {
                     content_len = size;
                     delete [] memblock;
                 } else {
-                    content = error404;
-                    content_len = content.size();
+                    memblock = (char *)error404;
+                    content_len = sizeof(error404) - 1;
                 }
                 
                 ifs.close();
             }
             std::stringstream out;
-            std::string resp = (success ? "200 Ok" : "404 Not Found");
-            out << "HTTP/1.0 " << resp << "\r\n"; 
-            out << "Server: simple web\r\n"
-                "Content-Type: text/html\r\n";
-            out << "Content-Lenght: " << content_len << "\r\n";
+            if (success) {
+                out << "HTTP/1.0 200 Ok\r\n"
+                    "Server: simple web\r\n"
+                    "Content-Type: text/html\r\n"
+                    "Content-Lenght: ";
+            } else {
+                out << "HTTP/1.0 404 Not Found\r\n"
+                    "Server: simple web\r\n"
+                    "Content-Type: text/html\r\n"
+                    "Content-Lenght: ";
+            }
+            out << content_len << "\r\n";
             if (content_len) {
                 out << "\r\n";
             }
             send(client, out.str().c_str(), out.str().size(), 0);
             if (content_len) {
-                if (memblock) {
-                    send(client, memblock, content_len, 0);
-                } else {
-                    send(client, content.c_str(), content_len, 0);
-                }
+                send(client, memblock, content_len, 0);
             }
             /*std::cout << req_type << ": " << req << " ";
             std::cout << resp << " ";
@@ -179,10 +181,10 @@ int main(int argc, char **argv) {
                 } else {
                     epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
                     int client = events[i].data.fd;
-                    std::thread t([client](){
+                    //std::thread t([client](){
                         int res = handle_message(client);
-                    });
-                    t.detach();
+                    //});
+                    //t.detach();
                 }
             }
         }
