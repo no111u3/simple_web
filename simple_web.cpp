@@ -29,6 +29,17 @@ namespace {
         "<head><title>simple web server</title></head>"
         "<body><h3><center>404 request page not found!</center></h3></body>";
     
+    const char head_ok[] =
+        "HTTP/1.0 200 Ok\r\n"
+        "Server: simple web\r\n"
+        "Content-Type: text/html\r\n"
+        "Content-Lenght: ";
+    
+    const char head_error404[] = 
+        "HTTP/1.0 404 Not Found\r\n"
+        "Server: simple web\r\n"
+        "Content-Type: text/html\r\n"
+        "Content-Lenght: ";
     std::string directory = ".";
 }
 int handle_message(int client) {
@@ -37,27 +48,20 @@ int handle_message(int client) {
     int len = recv(client, buf, BUF_SIZE, 0);
     
     if (len != 0) {
-        std::stringstream in(buf);
-        std::string req_type;
-        in >> req_type;
-        if (req_type == "GET") {
-            std::string req;
+        if (buf[0] == 'G' && buf[1] == 'E' && buf[2] == 'T') {
+            char *first = &buf[3];
+            while (*first == ' ') *first++;
+            char *second = first;
+            while ((*second != '?') && (*second != ' ')) *second++;
             bool success = false;
             int content_len = 0;
             char *memblock = 0;
-            in >> req;
-            // cleaning request
-            {
-                std::size_t found = req.find("?");
-                if (found != std::string::npos) {
-                    req = std::string(req.begin(), req.begin()+found);
-                }
-            }
-            if (req == "/") {
+            if (second - first == 1 && *first == '/') {
                 success = true;
                 memblock = (char *)title;
                 content_len = sizeof(title) - 1;
             } else {
+                std::string req(first, second);
                 std::ifstream ifs;
                 std::string path = directory + req;
                 
@@ -77,23 +81,13 @@ int handle_message(int client) {
                 
                 ifs.close();
             }
-            std::stringstream out;
             if (success) {
-                out << "HTTP/1.0 200 Ok\r\n"
-                    "Server: simple web\r\n"
-                    "Content-Type: text/html\r\n"
-                    "Content-Lenght: ";
+                send(client, head_ok, sizeof(head_ok) - 1, 0);
             } else {
-                out << "HTTP/1.0 404 Not Found\r\n"
-                    "Server: simple web\r\n"
-                    "Content-Type: text/html\r\n"
-                    "Content-Lenght: ";
+                send(client, head_ok, sizeof(head_ok) - 1, 0);
             }
-            out << content_len << "\r\n";
-            if (content_len) {
-                out << "\r\n";
-            }
-            send(client, out.str().c_str(), out.str().size(), 0);
+            std::string out = std::to_string(content_len) + "\r\n\r\n";
+            send(client, out.c_str(), out.size(), 0);
             if (content_len) {
                 send(client, memblock, content_len, 0);
             }
