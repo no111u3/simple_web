@@ -14,14 +14,14 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-#define EPOLL_SIZE 4
+#define EPOLL_SIZE 16
 #define BUF_SIZE (4*1024)
 
 #define EPOLL_RUN_TIMEOUT -1
 
 #include <thread>
 
-//namespace {
+namespace {
     const char title[] =
         "<head><title>simple web server</title></head>"
         "<body><h3><center>simple web server</center></h3></body>";
@@ -30,7 +30,7 @@
         "<body><h3><center>404 request page not found!</center></h3></body>";
     
     std::string directory = ".";
-//}
+}
 int handle_message(int client) {
     char buf[BUF_SIZE] = {0};
     
@@ -151,45 +151,51 @@ int main(int argc, char **argv) {
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
         
-        int listener = socket(PF_INET, SOCK_STREAM, 0);
-        int flags = fcntl(listener, F_GETFL, 0);
-        fcntl(listener, F_SETFL, flags | O_NONBLOCK);
+        pid = fork();
+        if (!pid) {
+            int listener = socket(PF_INET, SOCK_STREAM, 0);
+            int flags = fcntl(listener, F_GETFL, 0);
+            fcntl(listener, F_SETFL, flags | O_NONBLOCK);
 
-        int bnd = bind(listener, (struct sockaddr *)&addr, sizeof(addr));
-
-        listen(listener, ECONNREFUSED);
-        
-        int epfd = epoll_create(EPOLL_SIZE);
-        
-        ev.data.fd = listener;
-        
-        epoll_ctl(epfd, EPOLL_CTL_ADD, listener, &ev);
-        
-        while (true) {
-            int epoll_events_count = epoll_wait(epfd, events, EPOLL_SIZE, EPOLL_RUN_TIMEOUT);
+            int yes = 1;
+            setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
             
-            for (int i = 0; i < epoll_events_count; i++) {
-                if (events[i].data.fd == listener) {
-                    int client = accept(listener, (struct sockaddr *) &their_addr, &socklen);
-                    
-                    int flags = fcntl(client, F_GETFL, 0);
-                    fcntl(client, F_SETFL, flags | O_NONBLOCK);
-                    
-                    ev.data.fd = client;
-                    
-                    epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev);
-                } else {
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
-                    int client = events[i].data.fd;
-                    //std::thread t([client](){
-                        int res = handle_message(client);
-                    //});
-                    //t.detach();
+            int bnd = bind(listener, (struct sockaddr *)&addr, sizeof(addr));
+
+            listen(listener, ECONNREFUSED);
+            
+            int epfd = epoll_create(EPOLL_SIZE);
+            
+            ev.data.fd = listener;
+            
+            epoll_ctl(epfd, EPOLL_CTL_ADD, listener, &ev);
+            
+            while (true) {
+                int epoll_events_count = epoll_wait(epfd, events, EPOLL_SIZE, EPOLL_RUN_TIMEOUT);
+                
+                for (int i = 0; i < epoll_events_count; i++) {
+                    if (events[i].data.fd == listener) {
+                        int client = accept(listener, (struct sockaddr *) &their_addr, &socklen);
+                        
+                        int flags = fcntl(client, F_GETFL, 0);
+                        fcntl(client, F_SETFL, flags | O_NONBLOCK);
+                        
+                        ev.data.fd = client;
+                        
+                        epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev);
+                    } else {
+                        epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
+                        int client = events[i].data.fd;
+                        std::thread t([client](){
+                            int res = handle_message(client);
+                        });
+                        t.detach();
+                    }
                 }
             }
+            close(listener);
+            close(epfd);
         }
-        close(listener);
-        close(epfd);
     }
     
     return 0;
