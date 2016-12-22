@@ -84,7 +84,7 @@ int handle_message(int client) {
             if (success) {
                 send(client, head_ok, sizeof(head_ok) - 1, 0);
             } else {
-                send(client, head_ok, sizeof(head_ok) - 1, 0);
+                send(client, head_error404, sizeof(head_error404) - 1, 0);
             }
             std::string out = std::to_string(content_len) + "\r\n\r\n";
             send(client, out.c_str(), out.size(), 0);
