@@ -25,9 +25,11 @@ namespace {
     const char title[] =
         "<head><title>simple web server</title></head>"
         "<body><h3><center>simple web server</center></h3></body>";
+    const int size_title = sizeof(title) - 1;
     const char error404[] =
         "<head><title>simple web server</title></head>"
         "<body><h3><center>404 request page not found!</center></h3></body>";
+    const int size_eror404 = sizeof(error404) - 1;
     
     const char head_ok[] =
         "HTTP/1.0 200 Ok\r\n"
@@ -59,7 +61,7 @@ int handle_message(int client) {
             if (second - first == 1 && *first == '/') {
                 success = true;
                 memblock = (char *)title;
-                content_len = sizeof(title) - 1;
+                content_len = size_title;
             } else {
                 std::string req(first, second);
                 std::ifstream ifs;
@@ -76,7 +78,7 @@ int handle_message(int client) {
                     delete [] memblock;
                 } else {
                     memblock = (char *)error404;
-                    content_len = sizeof(error404) - 1;
+                    content_len = size_eror404;
                 }
                 
                 ifs.close();
@@ -86,7 +88,7 @@ int handle_message(int client) {
             } else {
                 send(client, head_error404, sizeof(head_error404) - 1, 0);
             }
-            std::string out = std::to_string(content_len) + "\r\n\r\n";
+            std::string out(std::to_string(content_len) + std::string("\r\n\r\n"));
             send(client, out.c_str(), out.size(), 0);
             if (content_len) {
                 send(client, memblock, content_len, 0);
@@ -109,12 +111,13 @@ int main(int argc, char **argv) {
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     socklen_t socklen;
     socklen = sizeof(struct sockaddr_in);
+    bool not_daemon = false;
     
     static struct epoll_event ev, events[EPOLL_SIZE];
     
     ev.events = EPOLLIN;
     int res;
-    while ((res = getopt(argc, argv, "h:p:d:")) != -1) {
+    while ((res = getopt(argc, argv, "h:p:d:n")) != -1) {
         switch (res) {
             case 'h':
                 addr.sin_addr.s_addr = inet_addr(optarg);
@@ -125,12 +128,16 @@ int main(int argc, char **argv) {
             case 'd':
                 directory = optarg;
                 break;
+            case 'n':
+                not_daemon = true;
+                break;
         }    
     }
 
     int pid = 0;
     // daemoning
-    pid = fork();
+    if (!not_daemon)
+        pid = fork();
     
     if (pid == -1)
     {
@@ -140,12 +147,13 @@ int main(int argc, char **argv) {
         umask(0);
         setsid();
         chdir("/");
-        
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
-        
-        pid = fork();
+        if (!not_daemon) {
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+            
+            pid = fork();
+        }
         if (!pid) {
             int listener = socket(PF_INET, SOCK_STREAM, 0);
             int flags = fcntl(listener, F_GETFL, 0);
