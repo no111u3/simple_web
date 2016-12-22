@@ -12,6 +12,7 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 #define EPOLL_SIZE 4
 #define BUF_SIZE (4*1024)
@@ -44,6 +45,7 @@ int handle_message(int client) {
             bool success = false;
             int content_len = 0;
             std::string content;
+            char *memblock = 0;
             in >> req;
             // cleaning request
             {
@@ -58,19 +60,17 @@ int handle_message(int client) {
                 content_len = content.size();
             } else {
                 std::ifstream ifs;
-                std::stringstream c_stream;
                 std::string path = directory + req;
-                ifs.open(path.c_str(), std::ifstream::in);
                 
-                if (ifs.good()) {
+                struct stat statbuf;
+                if (stat(path.c_str(), &statbuf) != -1) {
+                    int size = statbuf.st_size;
+                    ifs.open(path.c_str(), std::ifstream::in);
+                    memblock = new char [size];
+                    ifs.read(memblock, size);
                     success = true;
-                    char c = ifs.get();
-                    while (ifs.good()) {
-                        c_stream << c;
-                        c = ifs.get();
-                    }
-                    content = c_stream.str();
-                    content_len = content.size();
+                    content_len = size;
+                    delete [] memblock;
                 } else {
                     content = error404;
                     content_len = content.size();
@@ -89,7 +89,11 @@ int handle_message(int client) {
             }
             send(client, out.str().c_str(), out.str().size(), 0);
             if (content_len) {
-                send(client, content.c_str(), content.size(), 0);
+                if (memblock) {
+                    send(client, memblock, content_len, 0);
+                } else {
+                    send(client, content.c_str(), content_len, 0);
+                }
             }
             /*std::cout << req_type << ": " << req << " ";
             std::cout << resp << " ";
@@ -128,7 +132,7 @@ int main(int argc, char **argv) {
         }    
     }
 
-    int pid;
+    int pid = 0;
     // daemoning
     pid = fork();
     
@@ -136,7 +140,7 @@ int main(int argc, char **argv) {
     {
         std::cout << "Error to start daemon" << std::endl;
     }
-    else if (!pid) {
+    else if (true) {
         umask(0);
         setsid();
         chdir("/");
@@ -146,6 +150,8 @@ int main(int argc, char **argv) {
         close(STDERR_FILENO);
         
         int listener = socket(PF_INET, SOCK_STREAM, 0);
+        int flags = fcntl(listener, F_GETFL, 0);
+        fcntl(listener, F_SETFL, flags | O_NONBLOCK);
 
         int bnd = bind(listener, (struct sockaddr *)&addr, sizeof(addr));
 
@@ -163,6 +169,9 @@ int main(int argc, char **argv) {
             for (int i = 0; i < epoll_events_count; i++) {
                 if (events[i].data.fd == listener) {
                     int client = accept(listener, (struct sockaddr *) &their_addr, &socklen);
+                    
+                    int flags = fcntl(client, F_GETFL, 0);
+                    fcntl(client, F_SETFL, flags | O_NONBLOCK);
                     
                     ev.data.fd = client;
                     
