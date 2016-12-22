@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
     {
         std::cout << "Error to start daemon" << std::endl;
     }
-    else if (true) {
+    else if (!pid) {
         umask(0);
         setsid();
         chdir("/");
