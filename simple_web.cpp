@@ -36,12 +36,15 @@ namespace {
         "Server: simple web\r\n"
         "Content-Type: text/html\r\n"
         "Content-Lenght: ";
+    const int size_head_ok = sizeof(head_ok) - 1;
     
     const char head_error404[] = 
         "HTTP/1.0 404 Not Found\r\n"
         "Server: simple web\r\n"
         "Content-Type: text/html\r\n"
         "Content-Lenght: ";
+    const int size_head_error404 = sizeof(head_error404) - 1;
+        
     std::string directory = ".";
 }
 int handle_message(int client) {
@@ -51,7 +54,7 @@ int handle_message(int client) {
     
     if (len != 0) {
         if (buf[0] == 'G' && buf[1] == 'E' && buf[2] == 'T') {
-            char *first = &buf[3];
+            char *first = &buf[4];
             while (*first == ' ') *first++;
             char *second = first;
             while ((*second != '?') && (*second != ' ')) *second++;
@@ -84,9 +87,9 @@ int handle_message(int client) {
                 ifs.close();
             }
             if (success) {
-                send(client, head_ok, sizeof(head_ok) - 1, 0);
+                send(client, head_ok, size_head_ok, 0);
             } else {
-                send(client, head_error404, sizeof(head_error404) - 1, 0);
+                send(client, head_error404, size_head_error404, 0);
             }
             std::string out(std::to_string(content_len) + std::string("\r\n\r\n"));
             send(client, out.c_str(), out.size(), 0);
