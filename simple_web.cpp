@@ -1,8 +1,8 @@
-#include <string>
 #include <iostream>
-#include <sstream>
 #include <list>
 #include <fstream>
+#include <cstring>
+#include <cstdlib>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -11,7 +11,6 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <fcntl.h>
 
 #define EPOLL_SIZE 16
@@ -58,6 +57,7 @@ int handle_message(int client) {
             while (*first == ' ') *first++;
             char *second = first;
             while ((*second != '?') && (*second != ' ')) *second++;
+            bool transfer_file = false;
             bool success = false;
             int content_len = 0;
             char *memblock = 0;
@@ -67,35 +67,37 @@ int handle_message(int client) {
                 content_len = size_title;
             } else {
                 std::string req(first, second);
-                std::ifstream ifs;
                 std::string path = directory + req;
                 
                 struct stat statbuf;
                 if (stat(path.c_str(), &statbuf) != -1) {
+                    std::ifstream ifs;
                     int size = statbuf.st_size;
                     ifs.open(path.c_str(), std::ifstream::in);
                     memblock = new char [size];
-                    ifs.read(memblock, size);
+                    transfer_file = true;
                     success = true;
+                    ifs.read(memblock, size);
                     content_len = size;
-                    delete [] memblock;
+                    ifs.close();
                 } else {
                     memblock = (char *)error404;
                     content_len = size_eror404;
                 }
-                
-                ifs.close();
             }
             if (success) {
                 send(client, head_ok, size_head_ok, 0);
             } else {
                 send(client, head_error404, size_head_error404, 0);
             }
-            std::string out(std::to_string(content_len) + std::string("\r\n\r\n"));
-            send(client, out.c_str(), out.size(), 0);
+            char buffer[10+4+1];
+            int size = std::sprintf(buffer, "%d\n\n\n\n", content_len);
+            send(client, buffer, size, 0);
             if (content_len) {
                 send(client, memblock, content_len, 0);
             }
+            if (transfer_file)
+                delete [] memblock;
             /*std::cout << req_type << ": " << req << " ";
             std::cout << resp << " ";
             std::cout << content_len << std::endl;*/
