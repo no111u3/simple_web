@@ -1,24 +1,4 @@
-#include <iostream>
-#include <list>
-#include <fstream>
-#include <cstring>
-#include <cstdlib>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/epoll.h>
-#include <unistd.h>
-#include <fcntl.h>
-
-#define EPOLL_SIZE 16
-#define BUF_SIZE (4*1024)
-
-#define EPOLL_RUN_TIMEOUT -1
-
-#include <thread>
+#include "simple_web.h"
 
 namespace {
     const char title[] =
@@ -45,11 +25,16 @@ namespace {
     const int size_head_error404 = sizeof(head_error404) - 1;
         
     std::string directory = ".";
+    
+    const int epoll_size = 16;
+    const int input_buffer_size = (4*1024);
+
+    const int epoll_run_timeout = -1;
 }
 int handle_message(int client) {
-    char buf[BUF_SIZE] = {0};
+    char buf[input_buffer_size] = {0};
     
-    int len = recv(client, buf, BUF_SIZE, 0);
+    int len = recv(client, buf, input_buffer_size, 0);
     
     if (len != 0) {
         if (buf[0] == 'G' && buf[1] == 'E' && buf[2] == 'T') {
@@ -118,7 +103,7 @@ int main(int argc, char **argv) {
     socklen = sizeof(struct sockaddr_in);
     bool not_daemon = false;
     
-    static struct epoll_event ev, events[EPOLL_SIZE];
+    static struct epoll_event ev, events[epoll_size];
     
     ev.events = EPOLLIN;
     int res;
@@ -171,14 +156,14 @@ int main(int argc, char **argv) {
 
             listen(listener, ECONNREFUSED);
             
-            int epfd = epoll_create(EPOLL_SIZE);
+            int epfd = epoll_create(epoll_size);
             
             ev.data.fd = listener;
             
             epoll_ctl(epfd, EPOLL_CTL_ADD, listener, &ev);
             
             while (true) {
-                int epoll_events_count = epoll_wait(epfd, events, EPOLL_SIZE, EPOLL_RUN_TIMEOUT);
+                int epoll_events_count = epoll_wait(epfd, events, epoll_size, epoll_run_timeout);
                 
                 for (int i = 0; i < epoll_events_count; i++) {
                     if (events[i].data.fd == listener) {
