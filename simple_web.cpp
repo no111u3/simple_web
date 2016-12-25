@@ -1,6 +1,8 @@
+#include <functional>
 #include "simple_web.h"
 #include "handle_message.h"
 #include "pooling.h"
+#include "daemon.h"
 
 int main(int argc, char **argv) {
     std::cout << "simple web server" << std::endl;
@@ -35,29 +37,11 @@ int main(int argc, char **argv) {
         }
     }
 
-    int pid = 0;
-    // daemoning
-    if (!not_daemon)
-        pid = fork();
-    
-    if (pid == -1)
-    {
-        std::cout << "Error to start daemon" << std::endl;
-    }
-    else if (!pid) {
-        umask(0);
-        setsid();
-        chdir("/");
-        if (!not_daemon) {
-            close(STDIN_FILENO);
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
-            
-            pid = fork();
-        }
-        if (!pid) {
-            pooling::pool_processor(once, address_config);
-        }
+    if (not_daemon) {
+        pooling::pool_processor(once, address_config);
+    } else {
+        auto run = [once, address_config]() { pooling::pool_processor(once, address_config); };
+        server::get_daemon(run);
     }
     
     return 0;
