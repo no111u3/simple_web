@@ -1,7 +1,7 @@
 #ifndef HANDLE_MESSAGE_H
 #define HANDLE_MESSAGE_H
 
-#include <string>
+#include "config.h"
 
 namespace http {
     const char title[] =
@@ -28,10 +28,8 @@ namespace http {
     const size_t size_head_error404 = sizeof(head_error404) - 1;
     
     const size_t input_buffer_size = (4*1024);
-    
-    extern std::string directory;
 
-    ssize_t handle_message(int client);
+    ssize_t handle_message(int client, const conf::Config &config);
 }
 
 #endif // HANDLE_MESSAGE_H

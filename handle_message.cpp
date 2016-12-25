@@ -2,14 +2,11 @@
 
 #include <fstream>
 
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 namespace http {
-    std::string directory = ".";
-    
-    ssize_t handle_message(int client) {
+    ssize_t handle_message(int client, const conf::Config &config) {
         char buf[input_buffer_size] = {0};
 
         ssize_t len = recv(client, buf, input_buffer_size, 0);
@@ -30,7 +27,7 @@ namespace http {
                     content_len = size_title;
                 } else {
                     std::string req(first, second);
-                    std::string path = directory + req;
+                    std::string path = config.directory + req;
 
                     struct stat statbuf;
                     if (stat(path.c_str(), &statbuf) != -1) {

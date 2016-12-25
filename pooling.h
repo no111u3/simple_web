@@ -13,11 +13,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "config.h"
+
 namespace pooling {
     const int polling_size = 16;
     const int run_timeout = -1;
 
-    int pool_processor(bool once, sockaddr_in address_config);
+    int pool_processor(conf::Config &config);
 }
 
 #endif // POOLING_H

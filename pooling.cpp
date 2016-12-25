@@ -10,7 +10,7 @@
 
 namespace pooling {
 
-    int pool_processor(bool once, sockaddr_in address_config) {
+    int pool_processor(conf::Config &config) {
         socklen_t socklen;
         socklen = sizeof(sockaddr_in);
         sockaddr_in their_addr;
@@ -26,7 +26,7 @@ namespace pooling {
         int yes = 1;
         setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
-        bind(listener, (sockaddr *)&address_config, sizeof(address_config));
+        bind(listener, (sockaddr *)&(config.address), sizeof(config.address));
 
         listen(listener, ECONNREFUSED);
 
@@ -36,12 +36,12 @@ namespace pooling {
 
         epoll_ctl(epooll_fd, EPOLL_CTL_ADD, listener, &ev);
 
-        while (!once) {
+        while (!config.once) {
             int events_count = epoll_wait(epooll_fd, events, polling_size, run_timeout);
 
             if (events_count == -1) {
                 std::cout << "Epool working error" << std::endl;
-                once = false;
+                config.once = false;
             }
 
             for (int i = 0; i < events_count; i++) {
@@ -57,8 +57,8 @@ namespace pooling {
                 } else {
                     epoll_ctl(epooll_fd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
                     int client = events[i].data.fd;
-                    std::thread t([client](){
-                        http::handle_message(client);
+                    std::thread t([client, &config](){
+                        http::handle_message(client, config);
                     });
                     t.detach();
                 }

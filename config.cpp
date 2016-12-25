@@ -5,41 +5,42 @@
 #include <getopt.h>
 #include "config.h"
 
-#include "handle_message.h"
+namespace conf {
 
-namespace config {
+    Config get_config(int argc, char **argv) {
+        Config config;
+        config.address.sin_family = PF_INET;
+        config.address.sin_port = htons(12345);
+        config.address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    void get_config(int argc, char **argv, sockaddr_in &address_config, bool &not_daemon, bool &once) {
-        address_config.sin_family = PF_INET;
-        address_config.sin_port = htons(12345);
-        address_config.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-        not_daemon = false;
-        once = false;
+        config.not_daemon = false;
+        config.once = false;
 
         int res;
         while ((res = getopt(argc, argv, "h:p:d:ns")) != -1) {
             switch (res) {
                 case 'h':
-                    address_config.sin_addr.s_addr = inet_addr(optarg);
+                    config.address.sin_addr.s_addr = inet_addr(optarg);
                     break;
                 case 'p':
-                    address_config.sin_port = htons((unsigned short )std::stoi(optarg));
+                    config.address.sin_port = htons((unsigned short )std::stoi(optarg));
                     break;
                 case 'd':
-                    http::directory = optarg;
+                    config.directory = optarg;
                     break;
                 case 'n':
-                    not_daemon = true;
+                    config.not_daemon = true;
                     break;
                 case 's':
-                    once = true;
+                    config.once = true;
                     break;
                 default:
                     std::cout << "Unknown argument: " << (char)res << std::endl;
                     break;
             }
         }
+
+        return config;
     }
 }
 
