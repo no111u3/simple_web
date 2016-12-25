@@ -8,64 +8,67 @@
 #include <thread>
 #include <iostream>
 
+#include <unistd.h>
+
 namespace pooling {
+    Pool::Pool(conf::Config &config) : config_(config) {
+        ev_.events = EPOLLIN;
 
-    int pool_processor(conf::Config &config) {
-        socklen_t socklen;
-        socklen = sizeof(sockaddr_in);
-        sockaddr_in their_addr;
-        epoll_event ev, events[polling_size];
+        listener_ = socket(PF_INET, SOCK_STREAM, 0);
+        set_non_block(listener_);
 
-        ev.events = EPOLLIN;
-
-        int listener = socket(PF_INET, SOCK_STREAM, 0);
-        {
-            int flags = fcntl(listener, F_GETFL, 0);
-            fcntl(listener, F_SETFL, flags | O_NONBLOCK);
-        }
         int yes = 1;
-        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+        setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
-        bind(listener, (sockaddr *)&(config.address), sizeof(config.address));
+        bind(listener_, (sockaddr *)&(config_.address), sizeof(config_.address));
 
-        listen(listener, ECONNREFUSED);
+        listen(listener_, ECONNREFUSED);
 
-        int epooll_fd = epoll_create(polling_size);
+        epooll_fd_ = epoll_create(polling_size);
 
-        ev.data.fd = listener;
+        ev_.data.fd = listener_;
 
-        epoll_ctl(epooll_fd, EPOLL_CTL_ADD, listener, &ev);
+        epoll_ctl(epooll_fd_, EPOLL_CTL_ADD, listener_, &ev_);
+    }
 
-        while (!config.once) {
-            int events_count = epoll_wait(epooll_fd, events, polling_size, run_timeout);
+    Pool::~Pool() {
+        close(listener_);
+        close(epooll_fd_);
+    }
+
+    int Pool::operator()() {
+        epoll_event events[polling_size];
+
+        while (!config_.once) {
+            int events_count = epoll_wait(epooll_fd_, events, polling_size, run_timeout);
 
             if (events_count == -1) {
                 std::cout << "Epool working error" << std::endl;
-                config.once = false;
+                config_.once = false;
             }
 
             for (int i = 0; i < events_count; i++) {
-                if (events[i].data.fd == listener) {
-                    int client = accept(listener, (sockaddr *) &their_addr, &socklen);
-                    {
-                        int flags = fcntl(client, F_GETFL, 0);
-                        fcntl(client, F_SETFL, flags | O_NONBLOCK);
-                    }
-                    ev.data.fd = client;
+                if (events[i].data.fd == listener_) {
+                    socklen_t socklen;
+                    socklen = sizeof(sockaddr_in);
+                    sockaddr_in their_addr;
+                    int client = accept(listener_, (sockaddr *) &their_addr, &socklen);
+                    set_non_block(client);
 
-                    epoll_ctl(epooll_fd, EPOLL_CTL_ADD, client, &ev);
+                    ev_.data.fd = client;
+
+                    epoll_ctl(epooll_fd_, EPOLL_CTL_ADD, client, &ev_);
                 } else {
-                    epoll_ctl(epooll_fd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
+                    epoll_ctl(epooll_fd_, EPOLL_CTL_DEL, events[i].data.fd, &ev_);
                     int client = events[i].data.fd;
-                    std::thread t([client, &config](){
-                        http::handle_message(client, config);
+                    std::thread t([client, this](){
+                        http::handle_message(client, config_);
                     });
                     t.detach();
                 }
             }
         }
-        close(listener);
-        close(epooll_fd);
+
         return 0;
     }
 }
