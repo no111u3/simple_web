@@ -1,4 +1,3 @@
-#include <functional>
 #include "simple_web.h"
 #include "handle_message.h"
 #include "pooling.h"

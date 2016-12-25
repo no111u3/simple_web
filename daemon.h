@@ -12,7 +12,7 @@
 namespace server {
     template <typename T> int get_daemon(T daemon_start_function) {
         int pid = 0;
-        // daemoning
+        // daemon processing
         pid = fork();
 
         if (pid == -1)
