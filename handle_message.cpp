@@ -26,8 +26,8 @@ namespace http {
                     memory_block = (char *)title;
                     content_len = size_title;
                 } else {
-                    std::string req(first, second);
-                    std::string path = config.directory + req;
+                    std::string path(config.directory);
+                    path.append(first, second - first);
 
                     struct stat statbuf;
                     if (stat(path.c_str(), &statbuf) != -1) {
