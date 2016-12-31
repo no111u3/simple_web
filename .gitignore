@@ -1,0 +1,7 @@
+.idea/*
+CMakeCache.*
+CMakeFiles/*
+Makefile
+*.cbp
+cmake*
+simple_web
