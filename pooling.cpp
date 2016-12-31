@@ -61,9 +61,7 @@ namespace pooling {
                 } else {
                     epoll_ctl(epooll_fd_, EPOLL_CTL_DEL, events[i].data.fd, &ev_);
                     int client = events[i].data.fd;
-                    std::thread t([client, this](){
-                        http::handle_message(client, config_);
-                    });
+                    std::thread t{http::handle_message, client, config_};
                     t.detach();
                 }
             }
