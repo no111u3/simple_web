@@ -34,7 +34,6 @@ namespace polling {
     }
 
     Poll::~Poll() {
-        std::cout << "WAT" << std::endl;
         close(listener_);
         close(epoll_fd_);
         for (int i = 0; i != polling_size / 4; i++) {
