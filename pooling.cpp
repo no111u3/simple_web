@@ -5,13 +5,12 @@
 #include "pooling.h"
 #include "handle_message.h"
 
-#include <thread>
 #include <iostream>
 
 #include <unistd.h>
 
 namespace pooling {
-    Pool::Pool(conf::Config &config) : config_(config) {
+    Poll::Poll(conf::Config &config) : config_(config) {
         ev_.events = EPOLLIN;
 
         listener_ = socket(PF_INET, SOCK_STREAM, 0);
@@ -24,23 +23,29 @@ namespace pooling {
 
         listen(listener_, ECONNREFUSED);
 
-        epooll_fd_ = epoll_create(polling_size);
+        epoll_fd_ = epoll_create(polling_size);
 
         ev_.data.fd = listener_;
 
-        epoll_ctl(epooll_fd_, EPOLL_CTL_ADD, listener_, &ev_);
+        epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listener_, &ev_);
+
+        for (int i = 0; i != polling_size; i++)
+            threads.push_back(std::thread(&Poll::process, this));
     }
 
-    Pool::~Pool() {
+    Poll::~Poll() {
         close(listener_);
-        close(epooll_fd_);
+        close(epoll_fd_);
+        for (int i = 0; i != polling_size; i++) {
+            threads[i].join();
+        }
     }
 
-    int Pool::operator()() {
+    int Poll::operator()() {
         epoll_event events[polling_size];
 
         while (!config_.once) {
-            int events_count = epoll_wait(epooll_fd_, events, polling_size, run_timeout);
+            int events_count = epoll_wait(epoll_fd_, events, polling_size, run_timeout);
 
             if (events_count == -1) {
                 std::cout << "Epool working error" << std::endl;
@@ -57,16 +62,22 @@ namespace pooling {
 
                     ev_.data.fd = client;
 
-                    epoll_ctl(epooll_fd_, EPOLL_CTL_ADD, client, &ev_);
+                    epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, client, &ev_);
                 } else {
-                    epoll_ctl(epooll_fd_, EPOLL_CTL_DEL, events[i].data.fd, &ev_);
-                    int client = events[i].data.fd;
-                    std::thread t{http::handle_message, client, config_};
-                    t.detach();
+                    epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, events[i].data.fd, &ev_);
+                    queue_.push(events[i].data.fd);
                 }
             }
         }
 
         return 0;
+    }
+
+    void Poll::process() {
+        while (!config_.once) {
+            int descriptor;
+            queue_.wait_and_pop(descriptor);
+            http::handle_message(descriptor, config_);
+        }
     }
 }

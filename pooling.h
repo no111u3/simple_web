@@ -6,12 +6,14 @@
 #define POOLING_H
 
 #include "config.h"
+#include "threadsafe_queue.h"
 
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include <thread>
 
 namespace pooling {
-    const int polling_size = 16;
+    const int polling_size = 8;
     const int run_timeout = -1;
 
     inline void set_non_block(int &socket) {
@@ -19,17 +21,21 @@ namespace pooling {
         fcntl(socket, F_SETFL, flags | O_NONBLOCK);
     }
 
-    class Pool final {
+    class Poll final {
     public:
-        Pool(conf::Config &config);
-        ~Pool();
+        Poll(conf::Config &config);
+        ~Poll();
 
         int operator() ();
     private:
+        void process();
+
         conf::Config config_;
         epoll_event ev_;
         int listener_;
-        int epooll_fd_;
+        int epoll_fd_;
+        util::threadsafe_queue<int> queue_;
+        std::vector<std::thread> threads;
     };
 }
 

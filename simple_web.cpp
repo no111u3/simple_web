@@ -7,7 +7,7 @@ int main(int argc, char **argv) {
 
     auto config = conf::get_config(argc, argv);
 
-    pooling::Pool pool(config);
+    pooling::Poll pool(config);
 
     if (config.not_daemon) {
         pool();
