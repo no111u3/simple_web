@@ -12,7 +12,7 @@
 #include <sys/epoll.h>
 #include <thread>
 
-namespace pooling {
+namespace polling {
     const int polling_size = 32;
     const int run_timeout = -1;
 
@@ -24,6 +24,8 @@ namespace pooling {
     class Poll final {
     public:
         Poll(conf::Config &config);
+        Poll(const Poll &) = delete;
+        Poll &operator =(const Poll &) = delete;
         ~Poll();
 
         int operator() ();

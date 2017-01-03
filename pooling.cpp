@@ -9,7 +9,7 @@
 
 #include <unistd.h>
 
-namespace pooling {
+namespace polling {
     Poll::Poll(conf::Config &config) : config_(config) {
         ev_.events = EPOLLIN;
 
@@ -34,6 +34,7 @@ namespace pooling {
     }
 
     Poll::~Poll() {
+        std::cout << "WAT" << std::endl;
         close(listener_);
         close(epoll_fd_);
         for (int i = 0; i != polling_size / 4; i++) {

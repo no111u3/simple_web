@@ -7,12 +7,11 @@ int main(int argc, char **argv) {
 
     auto config = conf::get_config(argc, argv);
 
-    pooling::Poll pool(config);
-
     if (config.not_daemon) {
-        pool();
+        polling::Poll poll(config);
+        poll();
     } else {
-        server::get_daemon(pool);
+        server::get_daemon<polling::Poll>(config);
     }
     
     return 0;
