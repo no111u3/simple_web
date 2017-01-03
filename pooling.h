@@ -13,7 +13,7 @@
 #include <thread>
 
 namespace pooling {
-    const int polling_size = 8;
+    const int polling_size = 32;
     const int run_timeout = -1;
 
     inline void set_non_block(int &socket) {
