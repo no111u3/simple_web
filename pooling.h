@@ -15,6 +15,8 @@
 namespace polling {
     const int polling_size = 32;
     const int run_timeout = -1;
+    /* one worker per processor minus main accept thread */
+    const int workers = std::thread::hardware_concurrency() - 1;
 
     inline void set_non_block(int &socket) {
         int flags = fcntl(socket, F_GETFL, 0);

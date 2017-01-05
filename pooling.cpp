@@ -29,14 +29,14 @@ namespace polling {
 
         epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listener_, &ev_);
 
-        for (int i = 0; i != polling_size / 4; i++)
+        for (int i = 0; i != workers; i++)
             threads.push_back(std::thread(&Poll::process, this));
     }
 
     Poll::~Poll() {
         close(listener_);
         close(epoll_fd_);
-        for (int i = 0; i != polling_size / 4; i++) {
+        for (int i = 0; i != workers; i++) {
             threads[i].join();
         }
     }
