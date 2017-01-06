@@ -64,8 +64,8 @@ namespace polling {
 
                     epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, client, &ev_);
                 } else {
-                    epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, events[i].data.fd, &ev_);
                     queue_.push(events[i].data.fd);
+                    epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, events[i].data.fd, &ev_);
                 }
             }
         }
