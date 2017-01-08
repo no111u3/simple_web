@@ -54,7 +54,7 @@ namespace util {
             } else {
                 pool_work_queue.push(std::move(task));
             }
-            return res;
+            return std::move(res);
         }
     };
 

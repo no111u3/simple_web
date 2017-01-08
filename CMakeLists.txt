@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 set (CMAKE_CXX_FLAGS "-std=c++11 -pthread")
 
+set (CMAKE_BUILD_TYPE Debug)
+
 set (sourses
         simple_web.cpp
         handle_message.cpp
