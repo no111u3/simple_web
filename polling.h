@@ -12,8 +12,10 @@
 #include <sys/epoll.h>
 #include <thread>
 
+#include <list>
+
 namespace polling {
-    const int polling_size = 32;
+    const int polling_size = 256;
     const int run_timeout = -1;
 
     inline void set_non_block(int &socket) {
@@ -30,7 +32,7 @@ namespace polling {
 
         int operator() ();
     private:
-        void process(const int &descriptor);
+        void process(int descriptor);
         inline void epoll_add(const int &descriptor);
         inline void epoll_del(const int &descriptor);
 

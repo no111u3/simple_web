@@ -58,19 +58,15 @@ namespace polling {
 
                     epoll_add(client);
                 } else {
-                    pool.submit([=] {
-                        this->process(descriptor);
+                    pool.submit([this, descriptor] {
+                        this->process(std::move(descriptor));
                     });
-                    epoll_del(events[i].data.fd);
+                    epoll_del(descriptor);
                 }
             }
         }
 
         return 0;
-    }
-
-    void Poll::process(const int &descriptor) {
-        http::handle_message(descriptor, config_);
     }
 
     void Poll::epoll_add(const int &descriptor) {
@@ -79,5 +75,9 @@ namespace polling {
 
     void Poll::epoll_del(const int &descriptor) {
         epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, descriptor, nullptr);
+    }
+
+    void Poll::process(int descriptor) {
+        http::handle_message(descriptor, config_);
     }
 }
