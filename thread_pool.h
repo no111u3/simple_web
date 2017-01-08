@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <future>
 #include <queue>
-#include <iostream>
 
 #include "thread_safe_queue.h"
 #include "function_wrapper.h"
