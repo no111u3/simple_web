@@ -6,7 +6,7 @@
 #define POOLING_H
 
 #include "config.h"
-#include "threadsafe_queue.h"
+#include "thread_pool.h"
 
 #include <fcntl.h>
 #include <sys/epoll.h>
@@ -15,8 +15,6 @@
 namespace polling {
     const int polling_size = 32;
     const int run_timeout = -1;
-    /* one worker per processor minus main accept thread */
-    const int workers = std::thread::hardware_concurrency() - 1;
 
     inline void set_non_block(int &socket) {
         int flags = fcntl(socket, F_GETFL, 0);
@@ -32,14 +30,15 @@ namespace polling {
 
         int operator() ();
     private:
-        void process();
+        void process(const int &descriptor);
+        inline void epoll_add(const int &descriptor);
+        inline void epoll_del(const int &descriptor);
 
         conf::Config config_;
         epoll_event ev_;
         int listener_;
         int epoll_fd_;
-        util::threadsafe_queue<int> queue_;
-        std::vector<std::thread> threads;
+        util::thread_pool pool;
     };
 }
 

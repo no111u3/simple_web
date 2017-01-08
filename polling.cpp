@@ -2,7 +2,7 @@
 // Created by nis on 23.12.16.
 //
 
-#include "pooling.h"
+#include "polling.h"
 #include "handle_message.h"
 
 #include <iostream>
@@ -28,17 +28,11 @@ namespace polling {
         ev_.data.fd = listener_;
 
         epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listener_, &ev_);
-
-        for (int i = 0; i != workers; i++)
-            threads.push_back(std::thread(&Poll::process, this));
     }
 
     Poll::~Poll() {
         close(listener_);
         close(epoll_fd_);
-        for (int i = 0; i != workers; i++) {
-            threads[i].join();
-        }
     }
 
     int Poll::operator()() {
@@ -51,9 +45,9 @@ namespace polling {
                 std::cout << "Epool working error" << std::endl;
                 config_.once = false;
             }
-
             for (int i = 0; i < events_count; i++) {
-                if (events[i].data.fd == listener_) {
+                int descriptor = events[i].data.fd;
+                if (descriptor == listener_) {
                     socklen_t socklen;
                     socklen = sizeof(sockaddr_in);
                     sockaddr_in their_addr;
@@ -62,10 +56,12 @@ namespace polling {
 
                     ev_.data.fd = client;
 
-                    epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, client, &ev_);
+                    epoll_add(client);
                 } else {
-                    queue_.push(events[i].data.fd);
-                    epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, events[i].data.fd, &ev_);
+                    pool.submit([=] {
+                        this->process(descriptor);
+                    });
+                    epoll_del(events[i].data.fd);
                 }
             }
         }
@@ -73,11 +69,15 @@ namespace polling {
         return 0;
     }
 
-    void Poll::process() {
-        while (!config_.once) {
-            int descriptor;
-            queue_.wait_and_pop(descriptor);
-            http::handle_message(descriptor, config_);
-        }
+    void Poll::process(const int &descriptor) {
+        http::handle_message(descriptor, config_);
+    }
+
+    void Poll::epoll_add(const int &descriptor) {
+        epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, descriptor, &ev_);
+    }
+
+    void Poll::epoll_del(const int &descriptor) {
+        epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, descriptor, nullptr);
     }
 }

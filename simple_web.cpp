@@ -1,5 +1,5 @@
 #include "simple_web.h"
-#include "pooling.h"
+#include "polling.h"
 #include "daemon.h"
 
 int main(int argc, char **argv) {
