@@ -19,9 +19,9 @@ namespace util {
             std::shared_ptr<T> data;
             std::unique_ptr<node> next;
         };
-        std::mutex head_mutex;
+        mutable std::mutex head_mutex;
         std::unique_ptr<node> head;
-        std::mutex tail_mutex;
+        mutable std::mutex tail_mutex;
         node *tail;
         std::condition_variable data_cond;
 
@@ -30,10 +30,10 @@ namespace util {
             return tail;
         }
 
-        std::unique_ptr<node> pop_head() {
+        inline std::unique_ptr<node> pop_head() {
             std::unique_ptr<node> old_head = std::move(head);
             head = std::move(old_head->next);
-            return old_head;
+            return std::move(old_head);
         }
 
         std::unique_lock<std::mutex> wait_for_data() {
@@ -50,7 +50,7 @@ namespace util {
         std::unique_ptr<node> wait_pop_head(T &value) {
             std::unique_lock<std::mutex> head_lock(wait_for_data());
             value = std::move(*head->data);
-            return pop_head();
+            return std::move(pop_head());
         }
 
         std::unique_ptr<node> try_pop_head() {
@@ -67,7 +67,7 @@ namespace util {
                 return std::unique_ptr<node>();
             }
             value = std::move(*head->data);
-            return pop_head();
+            return std::move(pop_head());
         }
 
     public:
@@ -90,7 +90,7 @@ namespace util {
         }
 
         void wait_and_pop(T &value) {
-            std::unique_ptr<node> const old_head = wait_pop_head(value);
+            std::unique_ptr<node> const old_head = std::move(wait_pop_head(value));
         }
 
         void push(T new_value) {
