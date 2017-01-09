@@ -29,7 +29,7 @@ namespace http {
     
     const size_t input_buffer_size = (4*1024);
 
-    ssize_t handle_message(int client, const conf::Config &config);
+    ssize_t handle_message(int client);
 }
 
 #endif // HANDLE_MESSAGE_H

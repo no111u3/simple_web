@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 namespace polling {
-    Poll::Poll(conf::Config &config) : config_(config) {
+    Poll::Poll() {
         ev_.events = EPOLLIN;
 
         listener_ = socket(PF_INET, SOCK_STREAM, 0);
@@ -19,7 +19,8 @@ namespace polling {
         int yes = 1;
         setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
-        bind(listener_, (sockaddr *)&(config_.address), sizeof(config_.address));
+        bind(listener_, (sockaddr *)&(conf::Config::get_config()->address),
+             sizeof(conf::Config::get_config()->address));
 
         listen(listener_, ECONNREFUSED);
 
@@ -37,13 +38,14 @@ namespace polling {
 
     int Poll::operator()() {
         epoll_event events[polling_size];
+        bool &once = conf::Config::get_config()->once;
 
-        while (!config_.once) {
+        while (!once) {
             int events_count = epoll_wait(epoll_fd_, events, polling_size, run_timeout);
 
             if (events_count == -1) {
                 std::cout << "Epool working error" << std::endl;
-                config_.once = false;
+                once = false;
             }
             for (int i = 0; i < events_count; i++) {
                 int descriptor = events[i].data.fd;
@@ -58,8 +60,8 @@ namespace polling {
 
                     epoll_add(client);
                 } else {
-                    pool.submit([this, descriptor] {
-                        this->process(std::move(descriptor));
+                    pool.submit([descriptor] {
+                        http::handle_message(descriptor);
                     });
                     epoll_del(descriptor);
                 }
@@ -75,9 +77,5 @@ namespace polling {
 
     void Poll::epoll_del(const int &descriptor) {
         epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, descriptor, nullptr);
-    }
-
-    void Poll::process(int descriptor) {
-        http::handle_message(descriptor, config_);
     }
 }

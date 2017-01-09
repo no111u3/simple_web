@@ -6,41 +6,43 @@
 #include "config.h"
 
 namespace conf {
+    Config Config::config;
 
-    Config get_config(int argc, char **argv) {
-        Config config;
-        config.address.sin_family = PF_INET;
-        config.address.sin_port = htons(12345);
-        config.address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    void Config::create_config(int argc, char **argv) {
+        Config::config.address.sin_family = PF_INET;
+        Config::config.address.sin_port = htons(12345);
+        Config::config.address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-        config.not_daemon = false;
-        config.once = false;
+        Config::config.not_daemon = false;
+        Config::config.once = false;
 
         int res;
         while ((res = getopt(argc, argv, "h:p:d:ns")) != -1) {
             switch (res) {
                 case 'h':
-                    config.address.sin_addr.s_addr = inet_addr(optarg);
+                    Config::config.address.sin_addr.s_addr = inet_addr(optarg);
                     break;
                 case 'p':
-                    config.address.sin_port = htons((unsigned short )std::stoi(optarg));
+                    Config::config.address.sin_port = htons((unsigned short )std::stoi(optarg));
                     break;
                 case 'd':
-                    config.directory = optarg;
+                    Config::config.directory = optarg;
                     break;
                 case 'n':
-                    config.not_daemon = true;
+                    Config::config.not_daemon = true;
                     break;
                 case 's':
-                    config.once = true;
+                    Config::config.once = true;
                     break;
                 default:
                     std::cout << "Unknown argument: " << (char)res << std::endl;
                     break;
             }
         }
+    }
 
-        return config;
+    Config *Config::get_config() {
+        return &Config::config;
     }
 }
 

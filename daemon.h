@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 
 namespace server {
-    template <typename T, typename Arg> int get_daemon(Arg arg) {
+    template <typename T> int get_daemon() {
         int pid = 0;
         // daemon processing
         pid = fork();
@@ -30,7 +30,7 @@ namespace server {
             pid = fork();
         }
         if (!pid) {
-            T daemon(arg);
+            T daemon;
             daemon();
         }
         return 0;

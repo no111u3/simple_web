@@ -36,7 +36,7 @@ namespace http {
         return length;
     }
 
-    ssize_t handle_message(int client, const conf::Config &config) {
+    ssize_t handle_message(int client) {
         char buf[input_buffer_size] = {0};
 
         ssize_t len = recv(client, buf, input_buffer_size, 0);
@@ -56,7 +56,7 @@ namespace http {
                     memory_block = (char *)title;
                     content_len = size_title;
                 } else {
-                    std::string path(config.directory);
+                    std::string path(conf::Config::get_config()->directory);
                     path.append(first, second - first);
 
                     struct stat statbuf;

@@ -25,18 +25,16 @@ namespace polling {
 
     class Poll final {
     public:
-        Poll(conf::Config &config);
+        Poll();
         Poll(const Poll &) = delete;
         Poll &operator =(const Poll &) = delete;
         ~Poll();
 
         int operator() ();
     private:
-        void process(int descriptor);
         inline void epoll_add(const int &descriptor);
         inline void epoll_del(const int &descriptor);
 
-        conf::Config config_;
         epoll_event ev_;
         int listener_;
         int epoll_fd_;
