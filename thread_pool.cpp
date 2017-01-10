@@ -27,6 +27,8 @@ namespace util {
     }
 
     thread_pool::~thread_pool() {
+        if (poll)
+            delete poll;
         done = true;
     }
 
