@@ -9,12 +9,6 @@ namespace conf {
     Config Config::config;
 
     void Config::create_config(int argc, char **argv) {
-        Config::config.address.sin_family = PF_INET;
-        Config::config.address.sin_port = htons(12345);
-        Config::config.address.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-        Config::config.not_daemon = false;
-        Config::config.once = false;
 
         int res;
         while ((res = getopt(argc, argv, "h:p:d:ns")) != -1) {
@@ -43,6 +37,15 @@ namespace conf {
 
     Config *Config::get_config() {
         return &Config::config;
+    }
+
+    Config::Config() {
+        address.sin_family = PF_INET;
+        address.sin_port = htons(12345);
+        address.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+        not_daemon = false;
+        once = false;
     }
 }
 

@@ -1,5 +1,5 @@
 #include "simple_web.h"
-#include "polling.h"
+#include "core.h"
 #include "daemon.h"
 
 int main(int argc, char **argv) {
@@ -7,11 +7,13 @@ int main(int argc, char **argv) {
 
     conf::Config::create_config(argc, argv);
 
+
+
     if (conf::Config::get_config()->not_daemon) {
-        polling::Poll poll;
-        poll();
+        server::Core *core = server::Core::get_core();
+        (*core)();
     } else {
-        server::get_daemon<polling::Poll>();
+        server::get_daemon<server::Core>();
     }
     
     return 0;

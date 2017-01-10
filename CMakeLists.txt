@@ -9,6 +9,6 @@ set (sourses
         handle_message.cpp
         polling.cpp
         config.cpp
-        thread_pool.cpp)
+        thread_pool.cpp core.cpp core.h)
 
 add_executable(simple_web ${sourses})

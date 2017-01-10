@@ -6,7 +6,6 @@
 #define POOLING_H
 
 #include "config.h"
-#include "thread_pool.h"
 
 #include <fcntl.h>
 #include <sys/epoll.h>
@@ -15,8 +14,8 @@
 #include <list>
 
 namespace polling {
-    const int polling_size = 256;
-    const int run_timeout = -1;
+    const int polling_size = 128;
+    const int run_timeout = 50;
 
     inline void set_non_block(int &socket) {
         int flags = fcntl(socket, F_GETFL, 0);
@@ -38,7 +37,6 @@ namespace polling {
         epoll_event ev_;
         int listener_;
         int epoll_fd_;
-        util::thread_pool pool;
     };
 }
 

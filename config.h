@@ -23,7 +23,7 @@ namespace conf {
 
         static Config * get_config();
     private:
-        Config() {}
+        Config();
 
         static Config config;
     };

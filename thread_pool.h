@@ -9,11 +9,14 @@
 #include <algorithm>
 #include <future>
 #include <queue>
+#include <iostream>
 
 #include "thread_safe_queue.h"
 #include "function_wrapper.h"
 #include "work_stealing_queue.h"
 #include "join_threads.h"
+
+#include "polling.h"
 
 namespace util {
 
@@ -30,6 +33,7 @@ namespace util {
 
         static thread_local work_stealing_queue *local_work_queue;
         static thread_local unsigned my_index;
+        static thread_local polling::Poll *poll;
 
         void worker_thread(unsigned my_index_);
         bool pop_task_from_local_queue(task_type &task);

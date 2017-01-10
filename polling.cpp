@@ -9,6 +9,8 @@
 
 #include <unistd.h>
 
+#include "core.h"
+
 namespace polling {
     Poll::Poll() {
         ev_.events = EPOLLIN;
@@ -17,7 +19,7 @@ namespace polling {
         set_non_block(listener_);
 
         int yes = 1;
-        setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+        setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &yes, sizeof(int));
 
         bind(listener_, (sockaddr *)&(conf::Config::get_config()->address),
              sizeof(conf::Config::get_config()->address));
@@ -40,31 +42,29 @@ namespace polling {
         epoll_event events[polling_size];
         bool &once = conf::Config::get_config()->once;
 
-        while (!once) {
-            int events_count = epoll_wait(epoll_fd_, events, polling_size, run_timeout);
+        int events_count = epoll_wait(epoll_fd_, events, polling_size, run_timeout);
 
-            if (events_count == -1) {
-                std::cout << "Epool working error" << std::endl;
-                once = false;
-            }
-            for (int i = 0; i < events_count; i++) {
-                int descriptor = events[i].data.fd;
-                if (descriptor == listener_) {
-                    socklen_t socklen;
-                    socklen = sizeof(sockaddr_in);
-                    sockaddr_in their_addr;
-                    int client = accept(listener_, (sockaddr *) &their_addr, &socklen);
-                    set_non_block(client);
+        if (events_count == -1) {
+            std::cout << "Epool working error" << std::endl;
+            once = false;
+        }
+        for (int i = 0; i < events_count; i++) {
+            int descriptor = events[i].data.fd;
+            if (descriptor == listener_) {
+                socklen_t socklen;
+                socklen = sizeof(sockaddr_in);
+                sockaddr_in their_addr;
+                int client = accept(listener_, (sockaddr *) &their_addr, &socklen);
+                set_non_block(client);
 
-                    ev_.data.fd = client;
+                ev_.data.fd = client;
 
-                    epoll_add(client);
-                } else {
-                    pool.submit([descriptor] {
-                        http::handle_message(descriptor);
-                    });
-                    epoll_del(descriptor);
-                }
+                epoll_add(client);
+            } else {
+                server::Core::get_pool()->submit([descriptor] {
+                    http::handle_message(std::move(descriptor));
+                });
+                epoll_del(descriptor);
             }
         }
 

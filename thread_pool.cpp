@@ -6,6 +6,7 @@
 namespace util {
     thread_local work_stealing_queue *thread_pool::local_work_queue = nullptr;
     thread_local unsigned thread_pool::my_index = 0;
+    thread_local polling::Poll *thread_pool::poll = nullptr;
 
     thread_pool::thread_pool() : done(false), joiner(threads) {
         /* one worker per processor minus main accept thread */
@@ -65,9 +66,12 @@ namespace util {
         if (pop_task_from_local_queue(task) ||
             pop_task_from_pool_queue(task) ||
             pop_task_from_other_thread_queue(task)) {
+            task();
         } else {
-            wait_pop_task_from_pool_queue(task);
+            if (!poll) {
+                poll = new polling::Poll();
+            }
+            (*poll)();
         }
-        task();
     }
 }

@@ -30,8 +30,8 @@ namespace server {
             pid = fork();
         }
         if (!pid) {
-            T daemon;
-            daemon();
+            T *daemon = T::get_core();
+            (*daemon)();
         }
         return 0;
     }
