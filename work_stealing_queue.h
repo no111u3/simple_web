@@ -5,7 +5,7 @@
 #ifndef WORK_STEALING_QUEUE_H
 #define WORK_STEALING_QUEUE_H
 
-#include <mutex>
+#include "spinlock_mutex.h"
 #include <deque>
 
 #include "function_wrapper.h"
@@ -14,8 +14,9 @@ namespace util {
     class work_stealing_queue {
     private:
         typedef function_wrapper data_type;
+        typedef util::spinlock_mutex mutex_type;
         std::deque<data_type> the_queue;
-        mutable std::mutex the_mutex;
+        mutable mutex_type the_mutex;
     public:
         work_stealing_queue() {}
 
@@ -24,17 +25,17 @@ namespace util {
         work_stealing_queue &operator=(const work_stealing_queue &) = delete;
 
         void push(data_type data) {
-            std::lock_guard<std::mutex> lock(the_mutex);
+            std::lock_guard<mutex_type> lock(the_mutex);
             the_queue.push_front(std::move(data));
         }
 
         bool empty() const {
-            std::lock_guard<std::mutex> lock(the_mutex);
+            std::lock_guard<mutex_type> lock(the_mutex);
             return the_queue.empty();
         }
 
         bool try_pop(data_type &res) {
-            std::lock_guard<std::mutex> lock(the_mutex);
+            std::lock_guard<mutex_type> lock(the_mutex);
             if (the_queue.empty())
                 return false;
 
@@ -44,7 +45,7 @@ namespace util {
         }
 
         bool try_steal(data_type &res) {
-            std::lock_guard<std::mutex> lock(the_mutex);
+            std::lock_guard<mutex_type> lock(the_mutex);
             if (the_queue.empty()) {
                 return false;
             }

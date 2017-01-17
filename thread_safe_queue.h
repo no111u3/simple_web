@@ -19,14 +19,15 @@ namespace util {
             std::shared_ptr<T> data;
             std::unique_ptr<node> next;
         };
-        mutable std::mutex head_mutex;
+        typedef std::mutex mutex_type;
+        mutable mutex_type head_mutex;
         std::unique_ptr<node> head;
-        mutable std::mutex tail_mutex;
+        mutable mutex_type tail_mutex;
         node *tail;
         std::condition_variable data_cond;
 
         node * get_tail() {
-            std::lock_guard<std::mutex> tail_lock(tail_mutex);
+            std::lock_guard<mutex_type> tail_lock(tail_mutex);
             return tail;
         }
 
@@ -36,25 +37,25 @@ namespace util {
             return std::move(old_head);
         }
 
-        std::unique_lock<std::mutex> wait_for_data() {
-            std::unique_lock<std::mutex> head_lock(head_mutex);
+        std::unique_lock<mutex_type > wait_for_data() {
+            std::unique_lock<mutex_type> head_lock(head_mutex);
             data_cond.wait(head_lock, [&] { return head.get() != get_tail(); });
             return std::move(head_lock);
         }
 
         std::unique_ptr<node> wait_pop_head() {
-            std::unique_lock<std::mutex> head_lock(wait_for_data());
+            std::unique_lock<mutex_type> head_lock(wait_for_data());
             return pop_head();
         }
 
         std::unique_ptr<node> wait_pop_head(T &value) {
-            std::unique_lock<std::mutex> head_lock(wait_for_data());
+            std::unique_lock<mutex_type> head_lock(wait_for_data());
             value = std::move(*head->data);
             return std::move(pop_head());
         }
 
         std::unique_ptr<node> try_pop_head() {
-            std::lock_guard<std::mutex> head_lock(head_mutex);
+            std::lock_guard<mutex_type> head_lock(head_mutex);
             if (head.get() == get_tail()) {
                 return std::unique_ptr<node>();
             }
@@ -62,7 +63,7 @@ namespace util {
         }
 
         std::unique_ptr<node> try_pop_head(T &value) {
-            std::lock_guard<std::mutex> head_lock(head_mutex);
+            std::lock_guard<mutex_type> head_lock(head_mutex);
             if (head.get() == get_tail()) {
                 return std::unique_ptr<node>();
             }
@@ -99,7 +100,7 @@ namespace util {
             std::unique_ptr<node> p(new node);
             {
                 node *const new_tail = p.get();
-                std::lock_guard<std::mutex> tail_lock(tail_mutex);
+                std::lock_guard<mutex_type> tail_lock(tail_mutex);
                 tail->data = new_data;
                 tail->next = std::move(p);
                 tail = new_tail;
@@ -108,7 +109,7 @@ namespace util {
         }
 
         void empty() {
-            std::lock_guard<std::mutex> head_lock(head_mutex);
+            std::lock_guard<mutex_type> head_lock(head_mutex);
             return (head.get() == get_tail());
         }
     };
