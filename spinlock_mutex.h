@@ -19,6 +19,16 @@ namespace util {
             while (flag.test_and_set(std::memory_order_acquire));
         }
 
+        bool try_lock() {
+            unsigned thread_local counter = 4;
+            while (counter--) {
+                if (!flag.test_and_set(std::memory_order_acquire)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         void unlock() {
             flag.clear(std::memory_order_release);
         }

@@ -45,8 +45,8 @@ namespace util {
         }
 
         bool try_steal(data_type &res) {
-            std::lock_guard<mutex_type> lock(the_mutex);
-            if (the_queue.empty()) {
+            std::unique_lock<mutex_type> lock(the_mutex, std::try_to_lock);
+            if (!lock.owns_lock() || the_queue.empty()) {
                 return false;
             }
 
