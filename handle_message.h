@@ -3,6 +3,8 @@
 
 #include "config.h"
 
+#include <memory>
+
 namespace http {
     const char title[] =
         "<head><title>simple web server</title></head>"
@@ -29,7 +31,16 @@ namespace http {
     
     const size_t input_buffer_size = (4*1024);
 
-    ssize_t handle_message(int client);
+    class handler final {
+    private:
+        std::shared_ptr<char> file_path;
+        std::shared_ptr<char> header_buffer;
+        std::shared_ptr<char> transfer_buffer;
+    public:
+        handler();
+
+        void operator ()(int client_fd);
+    };
 }
 
 #endif // HANDLE_MESSAGE_H

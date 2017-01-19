@@ -8,71 +8,76 @@
 #include <limits>
 #include <cstring>
 #include <iostream>
+#include <bits/stat.h>
 
 namespace http {
 
+    handler::handler() :
+            header_buffer(new char[input_buffer_size]),
+            transfer_buffer(new char[1024]) {
 
-    ssize_t handle_message(int client) {
-        char buf[input_buffer_size] = {0};
+    }
 
-        ssize_t len = recv(client, buf, input_buffer_size, 0);
+    void handler::operator()(int client_fd) {
+        std::memset(header_buffer.get(), 0, input_buffer_size);
+
+        ssize_t len = recv(client_fd, header_buffer.get(), input_buffer_size, 0);
+        const char * buf = header_buffer.get();
 
         if (len != 0) {
             if (buf[0] == 'G' && buf[1] == 'E' && buf[2] == 'T') {
-                char *first = &buf[4];
+                const char *first = &buf[4];
                 while (*first == ' ') first++;
-                char *second = first;
+                const char *second = first;
                 while ((*second != '?') && (*second != ' ')) second++;
-                bool transfer_file = false;
-                bool success = false;
                 size_t content_len = 0;
-                char *memory_block = 0;
+                char *memory_block = transfer_buffer.get();
                 if (second - first == 1 && *first == '/') {
-                    success = true;
-                    memory_block = (char *)title;
-                    content_len = size_title;
+                    std::memcpy(memory_block, head_ok, size_head_ok);
+                    content_len = size_head_ok;
+                    content_len += util::uint32_to_str(size_title, memory_block + content_len);
+                    std::memcpy(memory_block + content_len, "\n\n\n\n", 4);
+                    content_len += 4;
+                    std::memcpy(memory_block + content_len, title, size_title);
+                    content_len += size_title;
                 } else {
-                    std::string path(conf::Config::get_config()->directory);
-                    path.append(first, second - first);
+                    std::string &directory = conf::Config::get_config()->directory;
+                    file_path.reset(new char[directory.size() + (second - first)]);
+                    std::memset(file_path.get(), 0, directory.size() + (second - first));
+                    std::memcpy(file_path.get(), directory.c_str(), directory.size());
+                    std::memcpy(file_path.get() + directory.size() - 1, first, second - first);
 
                     struct stat statbuf;
-                    if (stat(path.c_str(), &statbuf) != -1) {
-                        {
-                            std::ifstream ifs;
-                            size_t size = statbuf.st_size;
-                            ifs.open(path.c_str(), std::ifstream::in);
-                            memory_block = new char[size];
-                            transfer_file = true;
-                            success = true;
-                            ifs.read(memory_block, size);
-                            content_len = (size_t) size;
-                            ifs.close();
-                        }
+                    if (stat(file_path.get(), &statbuf) != -1) {
+                        std::ifstream ifs;
+                        size_t size = statbuf.st_size;
+                        transfer_buffer.reset(new char[size + 1024]);
+                        memory_block = transfer_buffer.get();
+
+                        std::memcpy(memory_block, head_ok, size_head_ok);
+                        content_len = size_head_ok;
+                        content_len += util::uint32_to_str(size, memory_block + content_len);
+                        std::memcpy(memory_block + content_len, "\n\n\n\n", 4);
+                        content_len += 4;
+
+                        ifs.open(file_path.get(), std::ifstream::in);
+                        ifs.read(memory_block + content_len, size);
+                        content_len += size;
+                        ifs.close();
                     } else {
-                        memory_block = (char *)error404;
-                        content_len = size_eror404;
+                        std::memcpy(memory_block, head_error404, size_eror404);
+                        content_len = size_head_error404;
+                        content_len += util::uint32_to_str(size_eror404, memory_block + content_len);
+                        std::memcpy(memory_block + content_len, "\n\n\n\n", 4);
+                        content_len += 4;
+
+                        std::memcpy(memory_block + content_len, error404, size_eror404);
+                        content_len += size_eror404;
                     }
                 }
-                if (success) {
-                    send(client, head_ok, (size_t) size_head_ok, 0);
-                } else {
-                    send(client, head_error404, (size_t) size_head_error404, 0);
-                }
-                char buffer[10+4+1] = {0};
-                int size = util::uint32_to_str(content_len, buffer);
-                std::memcpy(buffer + size, "\n\n\n\n", 4);
-                size += 4;
-                send(client, buffer, (size_t) size, 0);
-                if (content_len) {
-                    send(client, memory_block, (size_t) content_len, 0);
-                }
-                if (transfer_file)
-                    delete [] memory_block;
+                send(client_fd, memory_block, (size_t) content_len, 0);
             }
         }
-        close(client);
-
-        return len;
+        close(client_fd);
     }
-
 }
