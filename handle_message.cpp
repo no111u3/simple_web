@@ -8,7 +8,6 @@
 #include <limits>
 #include <cstring>
 #include <iostream>
-#include <bits/stat.h>
 
 namespace http {
 
