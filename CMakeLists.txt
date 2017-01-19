@@ -10,6 +10,6 @@ set (sourses
         polling.cpp
         config.cpp
         thread_pool.cpp
-        core.cpp)
+        core.cpp uint_to_str.cpp)
 
 add_executable(simple_web ${sourses})

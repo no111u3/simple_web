@@ -1,4 +1,5 @@
 #include "handle_message.h"
+#include "uint_to_str.h"
 
 #include <fstream>
 
@@ -9,72 +10,7 @@
 #include <iostream>
 
 namespace http {
-    size_t const get_length(uint32_t value) {
-        if (value < 1e5) {
-            if (value < 1e3) {
-                if (value < 1e2) {
-                    if (value < 1e1) {
-                        return 1;
-                    } else {
-                        return 2;
-                    }
-                } else {
-                    return 3;
-                }
-            } else {
-                if (value < 1e4) {
-                    return 4;
-                } else {
-                    return 5;
-                }
-            }
-        } else {
-            if (value < 1e7) {
-                if (value < 1e6) {
-                    return 6;
-                } else {
-                    return 7;
-                }
-            } else {
-                if (value < 1e9) {
-                    if (value < 1e8) {
-                        return 8;
-                    } else {
-                        return 9;
-                    }
-                } else {
-                    return 10;
-                }
-            }
-        }
-    }
 
-    size_t uint32_to_str(uint32_t value, char *dst) {
-        static const char digits[201] =
-                "0001020304050607080910111213141516171819"
-                "2021222324252627282930313233343536373839"
-                "4041424344454647484950515253545556575859"
-                "6061626364656667686970717273747576777879"
-                "8081828384858687888990919293949596979899";
-        size_t const length = get_length(value);
-        size_t next = length - 1;
-        while (value >= 100) {
-            auto const i = (value % 100) * 2;
-            value /= 100;
-            dst[next] = digits[i + 1];
-            dst[next - 1] = digits[i];
-            next -= 2;
-        }
-        // Handle last 1-2 digits
-        if (value < 10) {
-            dst[next] = (char) ('0' + uint32_t(value));
-        } else {
-            auto i = uint32_t(value) * 2;
-            dst[next] = digits[i + 1];
-            dst[next - 1] = digits[i];
-        }
-        return length;
-    }
 
     ssize_t handle_message(int client) {
         char buf[input_buffer_size] = {0};
@@ -103,7 +39,7 @@ namespace http {
                     if (stat(path.c_str(), &statbuf) != -1) {
                         {
                             std::ifstream ifs;
-                            __off_t size = statbuf.st_size;
+                            size_t size = statbuf.st_size;
                             ifs.open(path.c_str(), std::ifstream::in);
                             memory_block = new char[size];
                             transfer_file = true;
@@ -123,7 +59,7 @@ namespace http {
                     send(client, head_error404, (size_t) size_head_error404, 0);
                 }
                 char buffer[10+4+1] = {0};
-                int size = uint32_to_str(content_len, buffer);
+                int size = util::uint32_to_str(content_len, buffer);
                 std::memcpy(buffer + size, "\n\n\n\n", 4);
                 size += 4;
                 send(client, buffer, (size_t) size, 0);
