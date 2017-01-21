@@ -1,5 +1,6 @@
 #include "handle_message.h"
 #include "uint_to_str.h"
+#include "content_type_identify.h"
 
 #include <fstream>
 
@@ -53,10 +54,24 @@ namespace http {
                         transfer_buffer.reset(new char[size + 1024]);
                         memory_block = transfer_buffer.get();
 
-                        std::memcpy(memory_block, head_ok, size_head_ok);
-                        content_len = size_head_ok;
+                        std::memcpy(memory_block, head_file, size_head_file);
+                        content_len = size_head_file;
+
+                        const char *point = second - 6;
+                        while (point != second && *point != '.') point++;
+                        point++;
+                        const char *type = content_types[std::string(point, second)];
+                        if (!type) {
+                            type = "text/html";
+                        }
+                        std::strcpy(memory_block + content_len, type);
+
+                        content_len += std::strlen(type);
+                        std::strcpy(memory_block + content_len, "\r\nContent-Lenght: ");
+                        content_len += std::strlen("\r\nContent-Lenght: ");
+
                         content_len += util::uint32_to_str(size, memory_block + content_len);
-                        std::memcpy(memory_block + content_len, "\n\n\n\n", 4);
+                        std::memcpy(memory_block + content_len, "\r\n\r\n", 4);
                         content_len += 4;
 
                         ifs.open(file_path.get(), std::ifstream::in);
@@ -67,7 +82,7 @@ namespace http {
                         std::memcpy(memory_block, head_error404, size_eror404);
                         content_len = size_head_error404;
                         content_len += util::uint32_to_str(size_eror404, memory_block + content_len);
-                        std::memcpy(memory_block + content_len, "\n\n\n\n", 4);
+                        std::memcpy(memory_block + content_len, "\r\n\r\n", 4);
                         content_len += 4;
 
                         std::memcpy(memory_block + content_len, error404, size_eror404);

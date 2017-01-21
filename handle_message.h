@@ -28,7 +28,13 @@ namespace http {
         "Content-Type: text/html\r\n"
         "Content-Lenght: ";
     const size_t size_head_error404 = sizeof(head_error404) - 1;
-    
+
+    const char head_file[] =
+        "HTTP/1.0 200 Ok\r\n"
+        "Server: simple web\r\n"
+        "Content-Type: ";
+    const size_t size_head_file = sizeof(head_file) - 1;
+
     const size_t input_buffer_size = (4*1024);
 
     class handler final {
