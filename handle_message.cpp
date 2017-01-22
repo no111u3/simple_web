@@ -58,7 +58,7 @@ namespace http {
 
                         const char *point = second - 6;
                         while (point != second && *point != '.') point++;
-                        point++;
+                        if (*point == '.') point++;
                         const char *type = content_types[std::string(point, second)];
                         if (!type) {
                             type = "text/html";
