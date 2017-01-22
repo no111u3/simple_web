@@ -14,7 +14,8 @@ namespace http {
 
     handler::handler() :
             header_buffer(new char[input_buffer_size]),
-            transfer_buffer(new char[1024]) {
+            transfer_buffer(new char[1024]),
+            transfer_size(1024) {
     }
 
     void handler::operator()(int client_fd) {
@@ -50,8 +51,12 @@ namespace http {
                     if (stat(file_path.get(), &statbuf) != -1) {
                         std::ifstream ifs;
                         size_t size = statbuf.st_size;
-                        transfer_buffer.reset(new char[size + 1024]);
-                        memory_block = transfer_buffer.get();
+                        if (size > transfer_size) {
+                            size_t new_size = size + 1024;
+                            transfer_buffer.reset(new char[new_size]);
+                            memory_block = transfer_buffer.get();
+                            transfer_size = new_size;
+                        }
 
                         std::memcpy(memory_block, head_file, size_head_file);
                         content_len = size_head_file;
