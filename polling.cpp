@@ -62,7 +62,7 @@ namespace polling {
                 epoll_add(client);
             } else {
                 server::Core::get_pool()->submit([descriptor] {
-                    http::handler handler;
+                    static thread_local http::handler handler;
                     handler(std::move(descriptor));
                 });
                 epoll_del(descriptor);

@@ -15,7 +15,6 @@ namespace http {
     handler::handler() :
             header_buffer(new char[input_buffer_size]),
             transfer_buffer(new char[1024]) {
-
     }
 
     void handler::operator()(int client_fd) {
