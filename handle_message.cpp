@@ -35,7 +35,7 @@ namespace http {
                     std::memcpy(memory_block, head_ok, size_head_ok);
                     content_len = size_head_ok;
                     content_len += util::uint32_to_str(size_title, memory_block + content_len);
-                    std::memcpy(memory_block + content_len, "\n\n\n\n", 4);
+                    std::memcpy(memory_block + content_len, "\r\n\r\n", 4);
                     content_len += 4;
                     std::memcpy(memory_block + content_len, title, size_title);
                     content_len += size_title;
