@@ -51,7 +51,7 @@ namespace http {
                     if (stat(file_path.get(), &statbuf) != -1) {
                         std::ifstream ifs;
                         size_t size = statbuf.st_size;
-                        if (size > transfer_size) {
+                        if (size > transfer_size + 1024) {
                             size_t new_size = size + 1024;
                             transfer_buffer.reset(new char[new_size]);
                             memory_block = transfer_buffer.get();
