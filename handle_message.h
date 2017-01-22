@@ -39,9 +39,9 @@ namespace http {
 
     class handler final {
     private:
-        std::unique_ptr<char> file_path;
-        std::unique_ptr<char> header_buffer;
-        std::unique_ptr<char> transfer_buffer;
+        std::unique_ptr<char[]> file_path;
+        std::unique_ptr<char[]> header_buffer;
+        std::unique_ptr<char[]> transfer_buffer;
     public:
         handler();
 
