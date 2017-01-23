@@ -13,7 +13,8 @@ namespace http {
             {"html", "text/html"},
             {"css", "text/css"},
             {"png", "image/png"},
-            {"jpeg", "image/jpeg"}
+            {"jpeg", "image/jpeg"},
+            {"js", "text/javascript"}
     };
 }
 
