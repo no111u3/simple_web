@@ -13,6 +13,8 @@
 namespace http {
 
     handler::handler() :
+            file_path(nullptr),
+            file_path_size(0),
             header_buffer(new char[input_buffer_size]),
             transfer_buffer(new char[1024]),
             transfer_size(1024) {
@@ -42,8 +44,12 @@ namespace http {
                     content_len += size_title;
                 } else {
                     std::string &directory = conf::Config::get_config()->directory;
-                    file_path.reset(new char[directory.size() + (second - first)]);
-                    std::memset(file_path.get(), 0, directory.size() + (second - first));
+                    size_t path_size = directory.size() + (second - first);
+                    if (path_size > file_path_size) {
+                        file_path.reset(new char[path_size]);
+                        file_path_size = path_size;
+                    }
+                    std::memset(file_path.get(), 0, path_size);
                     std::memcpy(file_path.get(), directory.c_str(), directory.size());
                     std::memcpy(file_path.get() + directory.size() - 1, first, second - first);
 
@@ -51,11 +57,11 @@ namespace http {
                     if (stat(file_path.get(), &statbuf) != -1) {
                         std::ifstream ifs;
                         size_t size = statbuf.st_size;
-                        if (size > transfer_size + 1024) {
+                        if (size + 1024 > transfer_size) {
                             size_t new_size = size + 1024;
                             transfer_buffer.reset(new char[new_size]);
-                            memory_block = transfer_buffer.get();
                             transfer_size = new_size;
+                            memory_block = transfer_buffer.get();
                         }
 
                         std::memcpy(memory_block, head_file, size_head_file);

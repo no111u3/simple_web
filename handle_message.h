@@ -40,6 +40,7 @@ namespace http {
     class handler final {
     private:
         std::unique_ptr<char[]> file_path;
+        size_t file_path_size;
         std::unique_ptr<char[]> header_buffer;
         std::unique_ptr<char[]> transfer_buffer;
         size_t transfer_size;
