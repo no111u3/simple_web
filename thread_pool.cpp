@@ -48,10 +48,6 @@ namespace util {
         return pool_work_queue.try_pop(task);
     }
 
-    void thread_pool::wait_pop_task_from_pool_queue(task_type &task) {
-        pool_work_queue.wait_and_pop(task);
-    }
-
     bool thread_pool::pop_task_from_other_thread_queue(task_type &task) {
         for (unsigned i = 0; i < queues.size(); ++i) {
             unsigned const index = (my_index + i + 1) % queues.size();

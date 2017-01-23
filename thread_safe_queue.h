@@ -8,8 +8,7 @@
 #include <memory>
 
 #include <queue>
-#include <mutex>
-#include <condition_variable>
+#include "spinlock_mutex.h"
 
 namespace util {
     template <typename T>
@@ -19,12 +18,11 @@ namespace util {
             std::shared_ptr<T> data;
             std::unique_ptr<node> next;
         };
-        typedef std::mutex mutex_type;
+        typedef util::spinlock_mutex mutex_type;
         mutable mutex_type head_mutex;
         std::unique_ptr<node> head;
         mutable mutex_type tail_mutex;
         node *tail;
-        std::condition_variable data_cond;
 
         node * get_tail() {
             std::lock_guard<mutex_type> tail_lock(tail_mutex);
@@ -35,31 +33,6 @@ namespace util {
             std::unique_ptr<node> old_head = std::move(head);
             head = std::move(old_head->next);
             return std::move(old_head);
-        }
-
-        std::unique_lock<mutex_type > wait_for_data() {
-            std::unique_lock<mutex_type> head_lock(head_mutex);
-            data_cond.wait(head_lock, [&] { return head.get() != get_tail(); });
-            return std::move(head_lock);
-        }
-
-        std::unique_ptr<node> wait_pop_head() {
-            std::unique_lock<mutex_type> head_lock(wait_for_data());
-            return pop_head();
-        }
-
-        std::unique_ptr<node> wait_pop_head(T &value) {
-            std::unique_lock<mutex_type> head_lock(wait_for_data());
-            value = std::move(*head->data);
-            return std::move(pop_head());
-        }
-
-        std::unique_ptr<node> try_pop_head() {
-            std::lock_guard<mutex_type> head_lock(head_mutex);
-            if (head.get() == get_tail()) {
-                return std::unique_ptr<node>();
-            }
-            return pop_head();
         }
 
         std::unique_ptr<node> try_pop_head(T &value) {
@@ -76,22 +49,9 @@ namespace util {
         thread_safe_queue(const thread_safe_queue &other) = delete;
         thread_safe_queue & operator = (const thread_safe_queue &) = delete;
 
-        std::shared_ptr<T> try_pop() {
-            std::unique_ptr<node> old_head = try_pop_head();
-            return old_head ? old_head->data : std::shared_ptr<T>();
-        }
         bool try_pop(T &value) {
             std::unique_ptr<node> old_head = try_pop_head(value);
             return old_head != nullptr;
-        }
-
-        std::shared_ptr<T> wait_and_pop() {
-            std::unique_ptr<node> const old_head = wait_pop_head();
-            return old_head->data;
-        }
-
-        void wait_and_pop(T &value) {
-            std::unique_ptr<node> const old_head = std::move(wait_pop_head(value));
         }
 
         void push(T new_value) {
@@ -105,7 +65,6 @@ namespace util {
                 tail->next = std::move(p);
                 tail = new_tail;
             }
-            data_cond.notify_one();
         }
 
         void empty() {

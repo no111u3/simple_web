@@ -38,7 +38,6 @@ namespace util {
         void worker_thread(unsigned my_index_);
         bool pop_task_from_local_queue(task_type &task);
         bool pop_task_from_pool_queue(task_type &task);
-        void wait_pop_task_from_pool_queue(task_type &task);
         bool pop_task_from_other_thread_queue(task_type &task);
 
     public:

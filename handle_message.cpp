@@ -49,12 +49,13 @@ namespace http {
                         file_path.reset(new char[path_size]);
                         file_path_size = path_size;
                     }
-                    std::memset(file_path.get(), 0, path_size);
-                    std::memcpy(file_path.get(), directory.c_str(), directory.size());
-                    std::memcpy(file_path.get() + directory.size() - 1, first, second - first);
+                    char *ptr = file_path.get();
+                    std::memset(ptr, 0, path_size);
+                    std::memcpy(ptr, directory.c_str(), directory.size());
+                    std::memcpy(ptr + directory.size() - 1, first, second - first);
 
                     struct stat statbuf;
-                    if (stat(file_path.get(), &statbuf) != -1) {
+                    if (stat(ptr, &statbuf) != -1) {
                         std::ifstream ifs;
                         size_t size = statbuf.st_size;
                         if (size + 1024 > transfer_size) {
