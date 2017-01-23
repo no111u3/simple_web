@@ -14,8 +14,8 @@
 #include <list>
 
 namespace polling {
-    const int polling_size = 128;
-    const int run_timeout = 50;
+    const int polling_size = 32;
+    const int run_timeout = 10;
 
     inline void set_non_block(int &socket) {
         int flags = fcntl(socket, F_GETFL, 0);
